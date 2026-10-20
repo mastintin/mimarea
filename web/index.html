@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MiMarea Gijón — Tabla de Mareas Perpetua</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌊</text></svg>">
+</head>
+<body>
+  <header class="app-header">
+    <div class="container header-container">
+      <div class="brand">
+        <div class="brand-icon">🌊</div>
+        <div>
+          <h1 class="brand-title">MiMarea Gijón</h1>
+          <p class="brand-subtitle">Puerto de El Musel (Asturias) &bull; 43° 33' N, 5° 41' W</p>
+        </div>
+      </div>
+      <div class="header-badges">
+        <span class="badge badge-perpetual" title="Predicción continua mediante constituyentes armónicos astronómicos de Gijón">
+          ⚡ Cálculo Perpetuo Autónomo
+        </span>
+        <span class="badge badge-station">El Musel (Gijón)</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="container app-content">
+    <!-- BARRA DE NAVEGACIÓN DE FECHA Y AJUSTES -->
+    <section class="controls-card">
+      <div class="date-navigator">
+        <button id="btnPrevDay" class="btn btn-icon" title="Día anterior">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+
+        <div class="date-picker-wrap">
+          <input type="date" id="dateInput" class="input-date">
+          <button id="btnToday" class="btn btn-sm btn-outline">Hoy</button>
+        </div>
+
+        <button id="btnNextDay" class="btn btn-icon" title="Día siguiente">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      </div>
+
+      <div class="date-display-info">
+        <h2 id="dateDisplayTitle">Cargando fecha...</h2>
+        <span id="coeffBadge" class="coeff-pill">Coef. --</span>
+      </div>
+
+      <div class="view-toggles">
+        <div class="toggle-group" role="group">
+          <button id="btnViewDay" class="toggle-btn active">Día</button>
+          <button id="btnViewMonth" class="toggle-btn">Mes completo</button>
+        </div>
+
+        <div class="datum-selector">
+          <label for="datumSelect">Referencia:</label>
+          <select id="datumSelect" class="select-sm">
+            <option value="port" selected>Cero del Puerto (LAT)</option>
+            <option value="msl">Nivel Medio del Mar (MSL)</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- ESTADO EN TIEMPO REAL (SOLO SI SE VISUALIZA EL DÍA ACTUAL) -->
+    <section id="realtimeCard" class="realtime-banner">
+      <div class="realtime-status-grid">
+        <div class="rt-item rt-height">
+          <div class="rt-label">NIVEL ACTUAL</div>
+          <div class="rt-val-group">
+            <span id="rtHeight" class="rt-value">-- m</span>
+            <span id="rtTrendPill" class="trend-badge trend-up">
+              <span id="rtTrendIcon">⬆</span> <span id="rtTrendText">Subiendo</span>
+            </span>
+          </div>
+        </div>
+
+        <div class="rt-item rt-next">
+          <div class="rt-label">PRÓXIMO CAMBIO</div>
+          <div id="rtNextTitle" class="rt-value-sm">--</div>
+          <div id="rtCountdown" class="rt-sub">en --</div>
+        </div>
+
+        <div class="rt-item rt-coeff">
+          <div class="rt-label">COEFICIENTE</div>
+          <div id="rtCoeffVal" class="rt-value-sm">--</div>
+          <div id="rtCoeffDesc" class="rt-sub">--</div>
+        </div>
+
+        <div class="rt-item rt-temp">
+          <div class="rt-label">TEMP. AGUA EL MUSEL</div>
+          <div id="rtWaterTemp" class="rt-value-sm">-- °C</div>
+          <div class="rt-sub">Promedio Cantábrico</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VISTA DIARIA -->
+    <div id="dayViewContainer">
+      <!-- GRÁFICO DE LA CURVA DE MAREA DE 24 HORAS -->
+      <section class="card chart-section">
+        <div class="card-header">
+          <h3>Curva de Marea de 24 Horas</h3>
+          <span class="text-muted text-sm" id="chartDatumLabel">Ref: Cero del Puerto</span>
+        </div>
+        <div class="chart-wrapper">
+          <svg id="tideChartSvg" class="tide-svg" viewBox="0 0 960 280" preserveAspectRatio="none">
+            <!-- Renderizado dinámico vía JavaScript -->
+          </svg>
+          <div id="chartTooltip" class="chart-tooltip">--</div>
+        </div>
+        <div class="chart-legend">
+          <span class="legend-item"><span class="dot dot-high"></span> Pleamar (Marea Alta)</span>
+          <span class="legend-item"><span class="dot dot-low"></span> Bajamar (Marea Baja)</span>
+          <span class="legend-item"><span class="dot dot-now"></span> Momento actual</span>
+        </div>
+      </section>
+
+      <!-- TABLA RESUMEN DE PLEAMARES Y BAJAMARES -->
+      <section class="events-grid" id="eventsCardsContainer">
+        <!-- Generado dinámicamente -->
+      </section>
+
+      <!-- PANELES DE ASTRONOMÍA: SOL, LUNA Y ACTIVIDAD SOLUNAR -->
+      <div class="astro-grid">
+        <!-- SOL Y LUZ DIURNA -->
+        <div class="card astro-card">
+          <div class="card-header">
+            <h3>☀️ Sol & Luz Diurna</h3>
+          </div>
+          <div class="astro-body">
+            <div class="astro-row">
+              <span class="astro-item-label">Amanecer (Orto):</span>
+              <strong id="sunSunrise" class="astro-item-val">--:--</strong>
+            </div>
+            <div class="astro-row">
+              <span class="astro-item-label">Puesta (Ocaso):</span>
+              <strong id="sunSunset" class="astro-item-val">--:--</strong>
+            </div>
+            <div class="astro-row">
+              <span class="astro-item-label">Mediodía solar:</span>
+              <span id="sunNoon" class="astro-item-val">--:--</span>
+            </div>
+            <div class="astro-row">
+              <span class="astro-item-label">Horas de sol:</span>
+              <span id="sunDuration" class="astro-item-val">--</span>
+            </div>
+            <div class="astro-row">
+              <span class="astro-item-label">Primeras luces:</span>
+              <span id="sunDawn" class="astro-item-val">--:--</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- LUNA Y FASE LUNAR -->
+        <div class="card astro-card">
+          <div class="card-header">
+            <h3>🌙 Luna & Fase</h3>
+          </div>
+          <div class="astro-body">
+            <div class="moon-phase-hero">
+              <div id="moonIconGraphic" class="moon-graphic">🌓</div>
+              <div>
+                <h4 id="moonPhaseName">--</h4>
+                <p id="moonPercent" class="text-sm text-muted">Iluminación: --%</p>
+                <p id="moonAge" class="text-xs text-muted">Edad: -- días</p>
+              </div>
+            </div>
+            <div class="astro-row">
+              <span class="astro-item-label">Salida de la Luna:</span>
+              <strong id="moonRise" class="astro-item-val">--:--</strong>
+            </div>
+            <div class="astro-row">
+              <span class="astro-item-label">Puesta de la Luna:</span>
+              <strong id="moonSet" class="astro-item-val">--:--</strong>
+            </div>
+            <div class="astro-row">
+              <span class="astro-item-label">Paso por el cenit:</span>
+              <span id="moonTransit" class="astro-item-val">--:--</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ACTIVIDAD SOLUNAR (TABLA DE PESCA) -->
+        <div class="card astro-card solunar-card">
+          <div class="card-header">
+            <h3>🎣 Actividad Solunar</h3>
+            <span id="solunarStars" class="stars-pill">⭐⭐⭐</span>
+          </div>
+          <div class="astro-body">
+            <div class="solunar-headline">
+              <span class="label">Nivel de Actividad:</span>
+              <strong id="solunarLevel">--</strong>
+            </div>
+            <p id="solunarSummary" class="text-xs text-muted mb-3">--</p>
+
+            <div id="solunarPeriodsList" class="solunar-periods-list">
+              <!-- Rellenado por JavaScript -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VISTA MENSUAL (CALENDARIO) -->
+    <div id="monthViewContainer" class="hidden">
+      <section class="card">
+        <div class="card-header month-header">
+          <h3 id="monthTitle">Tabla Mensual de Mareas</h3>
+          <span class="text-muted text-sm">Gijón &bull; El Musel</span>
+        </div>
+        <div class="table-responsive">
+          <table class="table-month" id="monthTable">
+            <thead>
+              <tr>
+                <th>Día</th>
+                <th>Coef.</th>
+                <th>Luna</th>
+                <th>Marea 1</th>
+                <th>Marea 2</th>
+                <th>Marea 3</th>
+                <th>Marea 4</th>
+              </tr>
+            </thead>
+            <tbody id="monthTableBody">
+              <!-- Rellenado dinámicamente -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="app-footer">
+    <div class="container footer-content">
+      <p>
+        <strong>MiMarea Gijón</strong> &bull; Sistema de predicción de mareas perpetuo basado en constantes armónicas astronómicas para el <strong>Puerto de El Musel (Gijón)</strong>.
+      </p>
+      <p class="text-xs text-muted">
+        Cálculo astronómico independiente de bases de datos anuales fijas &bull; Cero de la carta: Cero Hidrográfico del Puerto &bull; Zona horaria: Europe/Madrid
+      </p>
+    </div>
+  </footer>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>

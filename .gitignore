@@ -1,0 +1,23 @@
+# Binarios de escritorio locales
+mimarea
+mimarea.exe
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Archivos de sistema y temporales
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+scratch/
+tmp/
+*.log
+
+# Entornos IDE
+.idea/
+.vscode/
+*.swp
+*~
