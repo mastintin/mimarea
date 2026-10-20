@@ -521,6 +521,45 @@ func CalculateMonthTides(year int, month int, datum DatumType) MonthSummaryResul
 	}
 }
 
+// Next30DaysResult contiene la previsión continua de los próximos 30 días consecutivos
+type Next30DaysResult struct {
+	StartDate string       `json:"start_date"`
+	Datum     DatumType    `json:"datum"`
+	Days      []DaySummary `json:"days"`
+}
+
+// CalculateNext30DaysTides genera la previsión continua de 30 días a partir de una fecha
+func CalculateNext30DaysTides(startDate time.Time, datum DatumType) Next30DaysResult {
+	loc := GetGijonLocation()
+	y, m, d := startDate.Date()
+	baseDate := time.Date(y, m, d, 12, 0, 0, 0, loc)
+
+	days := make([]DaySummary, 0, 30)
+	for i := 0; i < 30; i++ {
+		curDate := baseDate.AddDate(0, 0, i)
+		dayRes := CalculateDayTides(curDate, datum)
+
+		days = append(days, DaySummary{
+			DateStr:     dayRes.DateStr,
+			Day:         curDate.Day(),
+			Weekday:     daysSpanish[curDate.Weekday()],
+			Coefficient: dayRes.Coefficient,
+			CoeffLevel:  dayRes.CoeffLevel,
+			MoonPhase:   dayRes.MoonPhase.PhaseName,
+			MoonPercent: dayRes.MoonPhase.Percent,
+			MoonIcon:    dayRes.MoonPhase.PhaseIcon,
+			WaterTemp:   dayRes.WaterTempC,
+			Events:      dayRes.Events,
+		})
+	}
+
+	return Next30DaysResult{
+		StartDate: baseDate.Format("2006-01-02"),
+		Datum:     datum,
+		Days:      days,
+	}
+}
+
 func formatMeters(m float64) string {
 	return fmt.Sprintf("%.2f m", m)
 }

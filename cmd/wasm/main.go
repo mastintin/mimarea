@@ -78,7 +78,43 @@ func main() {
 		return string(bytes)
 	}))
 
-	// 3. Registrar función JS: calcWaterLevelNow(datum) -> float64
+	// 3. Registrar función JS: calcNext30DaysTides(dateStr, datum) -> JSON string
+	js.Global().Set("calcNext30DaysTides", js.FuncOf(func(this js.Value, args []js.Value) any {
+		dateStr := ""
+		datumStr := "port"
+
+		if len(args) > 0 && args[0].Type() == js.TypeString {
+			dateStr = args[0].String()
+		}
+		if len(args) > 1 && args[1].Type() == js.TypeString {
+			datumStr = args[1].String()
+		}
+
+		datum := tides.DatumType(datumStr)
+		if datum != tides.DatumMSL {
+			datum = tides.DatumPort
+		}
+
+		var targetDate time.Time
+		if dateStr != "" {
+			parsed, err := time.ParseInLocation("2006-01-02", dateStr, loc)
+			if err != nil {
+				return createErrorJSON(fmt.Sprintf("Fecha inválida: %v", err))
+			}
+			targetDate = parsed
+		} else {
+			targetDate = time.Now().In(loc)
+		}
+
+		res := tides.CalculateNext30DaysTides(targetDate, datum)
+		bytes, err := json.Marshal(res)
+		if err != nil {
+			return createErrorJSON(fmt.Sprintf("Error generando JSON: %v", err))
+		}
+		return string(bytes)
+	}))
+
+	// 4. Registrar función JS: calcWaterLevelNow(datum) -> float64
 	js.Global().Set("calcWaterLevelNow", js.FuncOf(func(this js.Value, args []js.Value) any {
 		datumStr := "port"
 		if len(args) > 0 && args[0].Type() == js.TypeString {

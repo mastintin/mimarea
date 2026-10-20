@@ -93,6 +93,9 @@ function startApplication() {
   const quickAstroStrip = document.getElementById('quickAstroStrip');
   const chartSection = document.getElementById('chartSection');
   const astroSection = document.getElementById('astroSection');
+  const next30DaysSection = document.getElementById('next30DaysSection');
+  const tbody30Days = document.getElementById('tbody30Days');
+  const next30DaysDatumLabel = document.getElementById('next30DaysDatumLabel');
 
   // Elementos del Widget Hero TuMarea
   const tmTrendWord = document.getElementById('tmTrendWord');
@@ -246,7 +249,7 @@ function startApplication() {
     const isMobile = window.innerWidth <= 768;
 
     if (!isMobile) {
-      // Escritorio: mostrar según vista activa Día o Mes
+      // Escritorio: según vista activa Día o 30 Días
       if (state.activeView === 'day') {
         dayViewContainer.classList.remove('hidden');
         monthViewContainer.classList.add('hidden');
@@ -258,6 +261,7 @@ function startApplication() {
       } else {
         dayViewContainer.classList.add('hidden');
         monthViewContainer.classList.remove('hidden');
+        loadMonthData();
       }
       return;
     }
@@ -266,9 +270,7 @@ function startApplication() {
     if (state.mobileTab === 'month') {
       dayViewContainer.classList.add('hidden');
       monthViewContainer.classList.remove('hidden');
-      if (!state.monthData) {
-        loadMonthData();
-      }
+      loadMonthData();
     } else {
       dayViewContainer.classList.remove('hidden');
       monthViewContainer.classList.add('hidden');
@@ -693,52 +695,81 @@ function startApplication() {
   }
 
   // ==========================================
-  // TABLA MENSUAL (30 DÍAS)
+  // PREVISIÓN A 30 DÍAS DESDE EL DÍA SELECCIONADO (UNA MAREA POR LÍNEA)
   // ==========================================
   function loadMonthData() {
-    if (typeof window.calcMonthTides !== 'function') return;
-    const d = new Date(state.currentDate + 'T12:00:00');
-    const year = d.getFullYear();
-    const month = d.getMonth() + 1;
+    if (typeof window.calcNext30DaysTides !== 'function') return;
 
-    const jsonStr = window.calcMonthTides(year, month, state.currentDatum);
+    const jsonStr = window.calcNext30DaysTides(state.currentDate, state.currentDatum);
     const data = JSON.parse(jsonStr);
     state.monthData = data;
     renderMonthView(data);
   }
 
   function renderMonthView(data) {
-    monthTitle.textContent = `Tabla de Mareas — ${data.month_name} de ${data.year}`;
+    if (!data || !data.days) return;
+
+    const datumLabel = (state.currentDatum === 'msl') ? 'Nivel Medio (MSL)' : 'Cero del Puerto (LAT)';
+    const monthDatumBadge = document.getElementById('monthDatumBadge');
+    if (monthDatumBadge) {
+      monthDatumBadge.textContent = datumLabel;
+    }
+
+    const firstDateParts = state.currentDate.split('-');
+    monthTitle.textContent = `Previsión a 30 Días (desde ${firstDateParts[2]}/${firstDateParts[1]}/${firstDateParts[0]})`;
     monthTableBody.innerHTML = '';
 
     const todayStr = getTodayDateString();
+    const monthsShort = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
     data.days.forEach(day => {
       const tr = document.createElement('tr');
-      if (day.date === todayStr) { tr.className = 'row-today'; }
+      const isToday = (day.date === todayStr);
+      const isSelected = (day.date === state.currentDate);
+      tr.className = `row-30day ${isToday ? 'row-today' : ''} ${isSelected && !isToday ? 'row-selected' : ''}`;
 
+      const [y, m, d] = day.date.split('-').map(Number);
+      const monthStr = monthsShort[m - 1];
       const moonIcon = getMoonEmoji(day.moon_icon);
-      let eventsCells = '';
-      for (let i = 0; i < 4; i++) {
-        if (day.events && day.events[i]) {
-          const ev = day.events[i];
-          const isPleamar = (ev.type === 'pleamar');
-          const cls = isPleamar ? 'tide-cell-pleamar' : 'tide-cell-bajamar';
-          const prefix = isPleamar ? '▲' : '▼';
-          eventsCells += `<td><span class="tide-cell ${cls}">${prefix} ${ev.time} (${ev.height.toFixed(2)}m)</span></td>`;
-        } else {
-          eventsCells += `<td><span class="text-muted">—</span></td>`;
-        }
+
+      // Una marea por línea
+      let tidesHtml = '';
+      if (day.events && day.events.length > 0) {
+        tidesHtml = day.events.map(ev => {
+          const isP = (ev.type === 'pleamar');
+          return `
+            <div class="tide-line ${isP ? 'tide-p' : 'tide-b'}">
+              <strong class="tide-line-time">${ev.time}</strong>
+              <span class="tide-line-badge">${isP ? 'P' : 'B'}</span>
+              <span class="tide-line-height">${ev.height.toFixed(2)} m</span>
+            </div>
+          `;
+        }).join('');
+      } else {
+        tidesHtml = '<span class="text-muted text-xs">Sin eventos calculados</span>';
       }
 
       tr.innerHTML = `
-        <td><strong>${day.day}</strong> <span class="text-muted text-xs">${day.weekday.substring(0, 3)}</span></td>
-        <td><span class="coeff-pill">${day.coefficient}</span></td>
-        <td title="${day.moon_phase}">${moonIcon} ${day.moon_percent}%</td>
-        ${eventsCells}
+        <td class="col-day">
+          <div class="day-badge">
+            <span class="day-weekday">${day.weekday.substring(0, 3)}</span>
+            <span class="day-num">${day.day}</span>
+            <span class="day-month">${monthStr}</span>
+          </div>
+        </td>
+        <td class="col-tides">
+          <div class="day-tides-stack">
+            ${tidesHtml}
+          </div>
+        </td>
+        <td class="col-meta">
+          <div class="meta-stack">
+            <span class="coeff-badge-mini" title="${day.coeff_level}">Coef ${day.coefficient}</span>
+            <span class="moon-mini" title="${day.moon_phase}">${moonIcon} ${day.moon_percent}%</span>
+          </div>
+        </td>
       `;
 
-      tr.style.cursor = 'pointer';
       tr.addEventListener('click', () => {
         state.currentDate = day.date;
         dateInput.value = day.date;

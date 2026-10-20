@@ -878,6 +878,199 @@ body {
 }
 
 /* ========================================================
+   TABLA DE LOS PRÓXIMOS 30 DÍAS (UNA MAREA POR LÍNEA)
+   ======================================================== */
+.next-30-days-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.table-30-days-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-30-days {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table-30-days th {
+  background: var(--bg-card-alt);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 10px 14px;
+  border-bottom: 2px solid var(--border-accent);
+  text-align: left;
+}
+
+.table-30-days .th-meta {
+  text-align: right;
+}
+
+.table-30-days tr.row-30day {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  transition: background 0.15s ease;
+  cursor: pointer;
+}
+
+.table-30-days tr.row-30day:hover {
+  background: rgba(2, 132, 199, 0.1);
+}
+
+.table-30-days tr.row-30day.row-today {
+  background: rgba(2, 132, 199, 0.16);
+  border-left: 3.5px solid var(--cyan-accent);
+}
+
+.table-30-days td {
+  padding: 12px 14px;
+  vertical-align: middle;
+}
+
+/* Columna de Fecha */
+.col-day {
+  width: 80px;
+  white-space: nowrap;
+}
+
+.day-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--bg-card-alt);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  width: 60px;
+  text-align: center;
+}
+
+.row-today .day-badge {
+  border-color: var(--cyan-accent);
+  background: rgba(56, 189, 248, 0.15);
+}
+
+.day-weekday {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--cyan-accent);
+  text-transform: uppercase;
+}
+
+.day-num {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1.1;
+}
+
+.day-month {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+/* Columna de Mareas (Una marea por línea) */
+.col-tides {
+  min-width: 190px;
+}
+
+.day-tides-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.tide-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.95rem;
+  padding: 2px 0;
+}
+
+.tide-line-time {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #ffffff;
+  min-width: 50px;
+}
+
+.tide-line-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.tide-p .tide-line-badge {
+  background: rgba(56, 189, 248, 0.2);
+  color: var(--pleamar-color);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+}
+
+.tide-b .tide-line-badge {
+  background: rgba(251, 146, 60, 0.2);
+  color: var(--bajamar-color);
+  border: 1px solid rgba(251, 146, 60, 0.4);
+}
+
+.tide-line-height {
+  font-weight: 700;
+  min-width: 58px;
+}
+
+.tide-p .tide-line-height {
+  color: var(--pleamar-color);
+}
+
+.tide-b .tide-line-height {
+  color: var(--bajamar-color);
+}
+
+/* Columna Meta (Coeficiente y Luna) */
+.col-meta {
+  width: 100px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.meta-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.coeff-badge-mini {
+  background: var(--amber-bg);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.moon-mini {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* ========================================================
    TABLA MENSUAL (30 DÍAS)
    ======================================================== */
 .table-responsive {
