@@ -3,10 +3,12 @@
  * Ejecuta el motor matemático de Go compilado en WebAssembly directamente en el dispositivo.
  */
 
-// Registrar Service Worker para caché offline inmediata
+// Registrar Service Worker para caché offline y forzar actualización inmediata
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {
+    navigator.serviceWorker.register('/sw.js').then((reg) => {
+      reg.update();
+    }).catch(() => {
       // Ignorar si se ejecuta en localhost o sin SSL
     });
   });

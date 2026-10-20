@@ -1,5 +1,5 @@
-// MiMarea Gijón — Service Worker (Caché Offline para iPhone / PWA)
-const CACHE_NAME = 'mimarea-v1';
+// MiMarea Gijón — Service Worker v2 (Estrategia Network-First con soporte Offline total)
+const CACHE_NAME = 'mimarea-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -13,12 +13,12 @@ const ASSETS_TO_CACHE = [
 ];
 
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(ASSETS_TO_CACHE);
     })
   );
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -31,15 +31,28 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
-    })
+    }).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
+// Estrategia Network-First: intenta obtener siempre la última versión online.
+// Si no hay conexión (modo avión / mar adentro), devuelve la versión en caché instantáneamente.
 self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET') return;
+
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      return cachedResponse || fetch(event.request);
-    })
+    fetch(event.request)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseClone);
+          });
+        }
+        return networkResponse;
+      })
+      .catch(() => {
+        return caches.match(event.request);
+      })
   );
 });
