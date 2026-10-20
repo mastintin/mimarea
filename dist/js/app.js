@@ -23,7 +23,6 @@ async function initWebAssembly() {
       try {
         result = await WebAssembly.instantiateStreaming(fetch('tides.wasm'), go.importObject);
       } catch (streamErr) {
-        // Fallback si el servidor web no envía el MIME type application/wasm
         const response = await fetch('tides.wasm');
         const buffer = await response.arrayBuffer();
         result = await WebAssembly.instantiate(buffer, go.importObject);
@@ -64,12 +63,15 @@ function startApplication() {
     currentDate: getTodayDateString(),
     currentDatum: 'port', // 'port' (Cero del Puerto LAT) o 'msl' (Nivel medio)
     activeView: 'day',    // 'day' o 'month'
+    mobileTab: 'marea',   // 'marea', 'chart', 'astro', 'month'
     dayData: null,
     monthData: null
   };
 
-  // Elementos del DOM
+  // Elementos DOM de Controles
   const dateInput = document.getElementById('dateInput');
+  const btnDateDisplay = document.getElementById('btnDateDisplay');
+  const dateDisplayCompact = document.getElementById('dateDisplayCompact');
   const btnToday = document.getElementById('btnToday');
   const btnPrevDay = document.getElementById('btnPrevDay');
   const btnNextDay = document.getElementById('btnNextDay');
@@ -79,25 +81,49 @@ function startApplication() {
   const dateDisplayTitle = document.getElementById('dateDisplayTitle');
   const coeffBadge = document.getElementById('coeffBadge');
 
-  const realtimeCard = document.getElementById('realtimeCard');
-  const rtHeight = document.getElementById('rtHeight');
-  const rtTrendPill = document.getElementById('rtTrendPill');
-  const rtTrendIcon = document.getElementById('rtTrendIcon');
-  const rtTrendText = document.getElementById('rtTrendText');
-  const rtNextTitle = document.getElementById('rtNextTitle');
-  const rtCountdown = document.getElementById('rtCountdown');
-  const rtCoeffVal = document.getElementById('rtCoeffVal');
-  const rtCoeffDesc = document.getElementById('rtCoeffDesc');
-  const rtWaterTemp = document.getElementById('rtWaterTemp');
-
+  // Contenedores Principales
   const dayViewContainer = document.getElementById('dayViewContainer');
   const monthViewContainer = document.getElementById('monthViewContainer');
+
+  // Secciones Internas del Día
+  const tumareaHeroCard = document.getElementById('tumareaHeroCard');
+  const tidesCardsSection = document.getElementById('tidesCardsSection');
+  const quickAstroStrip = document.getElementById('quickAstroStrip');
+  const chartSection = document.getElementById('chartSection');
+  const astroSection = document.getElementById('astroSection');
+
+  // Elementos del Widget Hero TuMarea
+  const tmTrendWord = document.getElementById('tmTrendWord');
+  const tmSinceTime = document.getElementById('tmSinceTime');
+  const tmArrow = document.getElementById('tmArrow');
+  const tmWater = document.getElementById('tmWater');
+  const tmLevelMax = document.getElementById('tmLevelMax');
+  const tmLevelCurrent = document.getElementById('tmLevelCurrent');
+  const tmLevelMin = document.getElementById('tmLevelMin');
+  const tmNextName = document.getElementById('tmNextName');
+  const tmNextTime = document.getElementById('tmNextTime');
+  const tmNextHeight = document.getElementById('tmNextHeight');
+  const tmCountdown = document.getElementById('tmCountdown');
+  const tmRate10m = document.getElementById('tmRate10m');
+
+  // Cuadrícula de 4 Mareas
   const eventsCardsContainer = document.getElementById('eventsCardsContainer');
+  const tidesCardsDateLabel = document.getElementById('tidesCardsDateLabel');
+
+  // Barra Rápida de Astronomía
+  const quickSunrise = document.getElementById('quickSunrise');
+  const quickMoonIcon = document.getElementById('quickMoonIcon');
+  const quickMoonPhase = document.getElementById('quickMoonPhase');
+  const quickMoonPercent = document.getElementById('quickMoonPercent');
+  const quickSunset = document.getElementById('quickSunset');
+  const quickCoeff = document.getElementById('quickCoeff');
+
+  // Gráfico 24 Horas
   const tideChartSvg = document.getElementById('tideChartSvg');
   const chartTooltip = document.getElementById('chartTooltip');
   const chartDatumLabel = document.getElementById('chartDatumLabel');
 
-  // Astro elementos
+  // Elementos Detalle Astronomía
   const sunSunrise = document.getElementById('sunSunrise');
   const sunSunset = document.getElementById('sunSunset');
   const sunNoon = document.getElementById('sunNoon');
@@ -117,9 +143,12 @@ function startApplication() {
   const solunarSummary = document.getElementById('solunarSummary');
   const solunarPeriodsList = document.getElementById('solunarPeriodsList');
 
-  // Mes elementos
+  // Vista Mensual
   const monthTitle = document.getElementById('monthTitle');
   const monthTableBody = document.getElementById('monthTableBody');
+
+  // Barra de Pestañas Móvil
+  const mobileTabBtns = document.querySelectorAll('.mobile-tab-btn');
 
   // Inicializar UI
   dateInput.value = state.currentDate;
@@ -128,13 +157,29 @@ function startApplication() {
   // Actualizar en tiempo real cada 30 segundos
   setInterval(updateRealtimeClock, 30000);
 
-  // Listeners de eventos
+  // ==========================================
+  // EVENT LISTENERS
+  // ==========================================
   dateInput.addEventListener('change', (e) => {
     if (e.target.value) {
       state.currentDate = e.target.value;
       refreshView();
     }
   });
+
+  if (btnDateDisplay) {
+    btnDateDisplay.addEventListener('click', () => {
+      try {
+        if (typeof dateInput.showPicker === 'function') {
+          dateInput.showPicker();
+        } else {
+          dateInput.focus();
+        }
+      } catch (err) {
+        dateInput.focus();
+      }
+    });
+  }
 
   btnToday.addEventListener('click', () => {
     state.currentDate = getTodayDateString();
@@ -150,8 +195,17 @@ function startApplication() {
     refreshView();
   });
 
-  btnViewDay.addEventListener('click', () => { switchView('day'); });
-  btnViewMonth.addEventListener('click', () => { switchView('month'); });
+  btnViewDay.addEventListener('click', () => { switchDesktopView('day'); });
+  btnViewMonth.addEventListener('click', () => { switchDesktopView('month'); });
+
+  // Pestañas móviles
+  mobileTabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      setMobileTab(btn.dataset.tab);
+    });
+  });
+
+  window.addEventListener('resize', applyResponsiveLayout);
 
   function shiftDate(days) {
     const d = new Date(state.currentDate + 'T12:00:00');
@@ -161,7 +215,15 @@ function startApplication() {
     refreshView();
   }
 
-  function switchView(view) {
+  function setMobileTab(tabName) {
+    state.mobileTab = tabName;
+    mobileTabBtns.forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.tab === tabName);
+    });
+    applyResponsiveLayout();
+  }
+
+  function switchDesktopView(view) {
     state.activeView = view;
     if (view === 'day') {
       btnViewDay.classList.add('active');
@@ -178,15 +240,60 @@ function startApplication() {
     }
   }
 
+  function applyResponsiveLayout() {
+    const isMobile = window.innerWidth <= 768;
+
+    if (!isMobile) {
+      // Escritorio: mostrar según vista activa Día o Mes
+      if (state.activeView === 'day') {
+        dayViewContainer.classList.remove('hidden');
+        monthViewContainer.classList.add('hidden');
+        tumareaHeroCard.classList.remove('hidden');
+        tidesCardsSection.classList.remove('hidden');
+        quickAstroStrip.classList.remove('hidden');
+        chartSection.classList.remove('hidden');
+        astroSection.classList.remove('hidden');
+      } else {
+        dayViewContainer.classList.add('hidden');
+        monthViewContainer.classList.remove('hidden');
+      }
+      return;
+    }
+
+    // Móvil: gestionar pestañas individuales
+    if (state.mobileTab === 'month') {
+      dayViewContainer.classList.add('hidden');
+      monthViewContainer.classList.remove('hidden');
+      if (!state.monthData) {
+        loadMonthData();
+      }
+    } else {
+      dayViewContainer.classList.remove('hidden');
+      monthViewContainer.classList.add('hidden');
+
+      const isMarea = (state.mobileTab === 'marea');
+      const isChart = (state.mobileTab === 'chart');
+      const isAstro = (state.mobileTab === 'astro');
+
+      tumareaHeroCard.classList.toggle('hidden', !isMarea);
+      tidesCardsSection.classList.toggle('hidden', !isMarea);
+      quickAstroStrip.classList.toggle('hidden', !isMarea);
+      chartSection.classList.toggle('hidden', !isChart);
+      astroSection.classList.toggle('hidden', !isAstro);
+    }
+  }
+
   function refreshView() {
-    if (state.activeView === 'day') {
+    if (state.activeView === 'day' || state.mobileTab !== 'month') {
       loadDayData();
     } else {
       loadMonthData();
     }
   }
 
-  // Ejecución directa en WebAssembly en el navegador
+  // ==========================================
+  // CARGA DE DATOS DESDE WEBASSEMBLY
+  // ==========================================
   function loadDayData() {
     if (typeof window.calcDayTides !== 'function') return;
     const jsonStr = window.calcDayTides(state.currentDate, state.currentDatum);
@@ -196,72 +303,186 @@ function startApplication() {
   }
 
   function renderDayView(data) {
+    const isToday = (data.date === getTodayDateString());
+
+    // 1. Títulos y etiquetas de fecha
     dateDisplayTitle.textContent = data.date_formatted;
+    dateDisplayCompact.textContent = formatCompactDate(data.date, isToday);
     coeffBadge.textContent = `Coef. ${data.coefficient} • ${data.coeff_level}`;
     chartDatumLabel.textContent = `Ref: ${data.datum_name}`;
+    tidesCardsDateLabel.textContent = isToday ? 'Predicción oficial para hoy' : data.date_formatted;
 
-    const isToday = (data.date === getTodayDateString());
-    if (isToday && data.current) {
-      realtimeCard.classList.remove('hidden');
-      renderRealtimeStatus(data.current, data.coefficient, data.coeff_level, data.water_temp_c);
-    } else {
-      realtimeCard.classList.add('hidden');
-    }
+    // 2. Renderizar Widget Hero TuMarea
+    renderTuMareaHero(data, isToday);
 
-    renderEventCards(data.events);
+    // 3. Renderizar las 4 mareas del día
+    renderEventCards(data.events, data.current);
+
+    // 4. Renderizar barra rápida de astros
+    renderQuickAstro(data);
+
+    // 5. Renderizar curva de marea con soporte táctil
     renderTideCurve(data.curve_24h, data.events, data.min_height, data.max_height, isToday);
+
+    // 6. Renderizar paneles de sol, luna y solunar
     renderAstroData(data.sun, data.moon, data.moon_phase, data.solunar);
+
+    // 7. Aplicar visibilidad de pestañas
+    applyResponsiveLayout();
   }
 
-  function renderRealtimeStatus(curr, coeff, coeffLevel, waterTemp) {
-    rtHeight.textContent = `${curr.current_height.toFixed(2)} m`;
-    rtTrendText.textContent = curr.trend;
-    rtTrendIcon.textContent = curr.trend === 'Subiendo' ? '⬆' : '⬇';
+  // ==========================================
+  // WIDGET HERO DIRECTO ESTILO TUMAREA
+  // ==========================================
+  function renderTuMareaHero(data, isToday) {
+    const curr = data.current;
+    const minH = data.min_height;
+    const maxH = data.max_height;
 
-    if (curr.trend === 'Subiendo') {
-      rtTrendPill.className = 'trend-badge trend-up';
+    // Alturas extremas de referencia en vertical
+    tmLevelMax.textContent = `${maxH.toFixed(2)} m`;
+    tmLevelMin.textContent = `${minH.toFixed(2)} m`;
+
+    if (isToday && curr) {
+      // Estado de tendencia: Subiendo o Bajando
+      const isUp = (curr.trend === 'Subiendo');
+      tmTrendWord.textContent = isUp ? 'SUBIENDO' : 'BAJANDO';
+      tmTrendWord.className = `tumarea-trend-badge ${isUp ? 'trend-up' : 'trend-down'}`;
+
+      // Flecha gigante
+      tmArrow.className = `tumarea-big-arrow ${isUp ? 'arrow-up' : 'arrow-down'}`;
+      tmArrow.title = isUp ? 'Marea subiendo' : 'Marea bajando';
+
+      // Nivel actual en vivo
+      tmLevelCurrent.textContent = `${curr.current_height.toFixed(2)} m`;
+
+      // Calcular porcentaje de agua en el vaso graduado
+      const range = Math.max(0.1, maxH - minH);
+      let pct = ((curr.current_height - minH) / range) * 100;
+      pct = Math.max(10, Math.min(90, pct)); // Mantener entre 10% y 90% para que el barco siempre luzca
+      tmWater.style.height = `${pct}%`;
+
+      // Determinar la hora desde la que lleva subiendo o bajando
+      const now = new Date();
+      const currentMin = now.getHours() * 60 + now.getMinutes();
+      let sinceTime = '--:--';
+
+      if (data.events && data.events.length > 0) {
+        // Buscar el evento pasado más reciente
+        let lastPast = null;
+        for (let ev of data.events) {
+          const parts = ev.time.split(':');
+          const evMin = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+          if (evMin <= currentMin) {
+            lastPast = ev;
+          }
+        }
+        if (lastPast) {
+          sinceTime = lastPast.time;
+        } else {
+          // Si es antes de la primera marea del día, la anterior fue de ayer por la noche
+          sinceTime = isUp ? 'las 23:30 de ayer' : 'las 23:30 de ayer';
+        }
+      }
+      tmSinceTime.textContent = sinceTime;
+
+      // Anuncio de la próxima marea
+      tmNextName.textContent = curr.next_event;
+      tmNextTime.textContent = curr.next_event_time;
+      tmNextHeight.textContent = `${curr.next_height.toFixed(2)} m`;
+      tmCountdown.textContent = curr.countdown_str.startsWith('en ') ? `Faltan ${curr.countdown_str.substring(3)}` : `Faltan ${curr.countdown_str}`;
+
+      // Tasa de cambio de altura en 10 minutos
+      let rate10mStr = 'En 10 min cambiará ~4 cm';
+      if (data.curve_24h && data.curve_24h.length > 0) {
+        const ptNow = data.curve_24h.find(p => p.minute >= currentMin) || data.curve_24h[0];
+        const pt10 = data.curve_24h.find(p => p.minute >= currentMin + 10) || data.curve_24h[data.curve_24h.length - 1];
+        const diffCm = Math.round((pt10.height - ptNow.height) * 100);
+        if (diffCm > 0) {
+          rate10mStr = `En 10 min el nivel subirá ~${diffCm} cm`;
+        } else if (diffCm < 0) {
+          rate10mStr = `En 10 min el nivel bajará ~${Math.abs(diffCm)} cm`;
+        } else {
+          rate10mStr = 'Nivel estable en el cambio de marea';
+        }
+      }
+      tmRate10m.textContent = rate10mStr;
     } else {
-      rtTrendPill.className = 'trend-badge trend-down';
+      // Fecha futura o pasada
+      tmTrendWord.textContent = 'PREDICCIÓN';
+      tmTrendWord.className = 'tumarea-trend-badge trend-up';
+      tmSinceTime.textContent = 'todo el día';
+      tmArrow.className = 'tumarea-big-arrow arrow-up';
+
+      const midH = (maxH + minH) / 2;
+      tmLevelCurrent.textContent = `${midH.toFixed(2)} m (Media)`;
+      tmWater.style.height = '50%';
+
+      if (data.events && data.events.length > 0) {
+        const first = data.events[0];
+        tmNextName.textContent = first.label;
+        tmNextTime.textContent = first.time;
+        tmNextHeight.textContent = `${first.height.toFixed(2)} m`;
+        tmCountdown.textContent = `Primera marea del día`;
+      }
+      tmRate10m.textContent = `Rango del día: ${(maxH - minH).toFixed(2)} m`;
     }
-
-    rtNextTitle.textContent = `${curr.next_event} (${curr.next_event_time})`;
-    rtCountdown.textContent = curr.countdown_str;
-    rtCoeffVal.textContent = coeff;
-    rtCoeffDesc.textContent = coeffLevel;
-    rtWaterTemp.textContent = `${waterTemp.toFixed(1)} °C`;
   }
 
-  function updateRealtimeClock() {
-    if (state.currentDate !== getTodayDateString() || state.activeView !== 'day') return;
-    loadDayData();
-  }
-
-  function renderEventCards(events) {
+  // ==========================================
+  // CUADRÍCULA DE 4 MAREAS DEL DÍA
+  // ==========================================
+  function renderEventCards(events, current) {
     eventsCardsContainer.innerHTML = '';
     if (!events || events.length === 0) {
       eventsCardsContainer.innerHTML = '<p class="text-muted">No se detectaron eventos para este día.</p>';
       return;
     }
 
+    const nextEventTime = current ? current.next_event_time : null;
+
     events.forEach(ev => {
       const card = document.createElement('div');
       const isPleamar = (ev.type === 'pleamar');
-      card.className = `event-card ${isPleamar ? 'card-pleamar' : 'card-bajamar'}`;
+      const isNext = (nextEventTime && ev.time === nextEventTime);
+
+      card.className = `event-card ${isPleamar ? 'card-pleamar' : 'card-bajamar'} ${isNext ? 'card-next-highlight' : ''}`;
 
       card.innerHTML = `
-        <div class="event-info">
+        <div class="event-badge-row">
           <span class="event-type-badge">${isPleamar ? '🌊 PLEAMAR' : '🏖️ BAJAMAR'}</span>
-          <span class="event-time">${ev.time}</span>
+          ${isNext ? '<span class="next-pill">PRÓXIMA</span>' : ''}
         </div>
-        <div>
-          <div class="event-height">${ev.height_str}</div>
-          <div class="event-coeff-tag">Coef. ${ev.coefficient}</div>
+        <div class="event-time">${ev.time}</div>
+        <div class="event-meta-right">
+          <span class="event-height">${ev.height.toFixed(2)} m</span>
+          <span class="event-coeff-tag">Coef. ${ev.coefficient}</span>
         </div>
       `;
       eventsCardsContainer.appendChild(card);
     });
   }
 
+  // ==========================================
+  // BARRA RÁPIDA DE ASTRONOMÍA
+  // ==========================================
+  function renderQuickAstro(data) {
+    quickSunrise.textContent = data.sun.sunrise;
+    quickMoonIcon.textContent = getMoonEmoji(data.moon_phase.phase_icon);
+    quickMoonPhase.textContent = data.moon_phase.phase_name;
+    quickMoonPercent.textContent = `${data.moon_phase.percent}%`;
+    quickSunset.textContent = data.sun.sunset;
+    quickCoeff.textContent = data.coefficient;
+  }
+
+  function updateRealtimeClock() {
+    if (state.currentDate !== getTodayDateString()) return;
+    loadDayData();
+  }
+
+  // ==========================================
+  // CURVA DE MAREA INTERACTIVA (CON TOUCH SCRUBBING)
+  // ==========================================
   function renderTideCurve(curvePoints, events, minH, maxH, isToday) {
     if (!curvePoints || curvePoints.length === 0) return;
 
@@ -364,10 +585,10 @@ function startApplication() {
     }
 
     tideChartSvg.innerHTML = svgHtml;
-    setupChartScrubber(curvePoints, padLeft, padRight, svgW);
+    setupChartScrubber(curvePoints);
   }
 
-  function setupChartScrubber(curvePoints, padLeft, padRight, svgW) {
+  function setupChartScrubber(curvePoints) {
     const wrapper = tideChartSvg.parentElement;
 
     const handleScrub = (clientX, clientY) => {
@@ -397,16 +618,26 @@ function startApplication() {
       chartTooltip.style.display = 'block';
     };
 
+    // Soporte para ratón y eventos táctiles en móvil
     wrapper.onmousemove = (e) => handleScrub(e.clientX, e.clientY);
+    wrapper.onmouseleave = () => { chartTooltip.style.display = 'none'; };
+
+    wrapper.ontouchstart = (e) => {
+      if (e.touches.length > 0) {
+        handleScrub(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    };
     wrapper.ontouchmove = (e) => {
       if (e.touches.length > 0) {
         handleScrub(e.touches[0].clientX, e.touches[0].clientY);
       }
     };
-    wrapper.onmouseleave = () => { chartTooltip.style.display = 'none'; };
     wrapper.ontouchend = () => { chartTooltip.style.display = 'none'; };
   }
 
+  // ==========================================
+  // PANELES DETALLADOS DE ASTRONOMÍA
+  // ==========================================
   function renderAstroData(sun, moon, moonPhase, solunar) {
     sunSunrise.textContent = sun.sunrise;
     sunSunset.textContent = sun.sunset;
@@ -459,6 +690,9 @@ function startApplication() {
     }
   }
 
+  // ==========================================
+  // TABLA MENSUAL (30 DÍAS)
+  // ==========================================
   function loadMonthData() {
     if (typeof window.calcMonthTides !== 'function') return;
     const d = new Date(state.currentDate + 'T12:00:00');
@@ -506,13 +740,20 @@ function startApplication() {
       tr.addEventListener('click', () => {
         state.currentDate = day.date;
         dateInput.value = day.date;
-        switchView('day');
+        if (window.innerWidth <= 768) {
+          setMobileTab('marea');
+        } else {
+          switchDesktopView('day');
+        }
       });
 
       monthTableBody.appendChild(tr);
     });
   }
 
+  // ==========================================
+  // HELPERS DE FECHAS
+  // ==========================================
   function getTodayDateString() {
     return formatDateToISO(new Date());
   }
@@ -522,6 +763,20 @@ function startApplication() {
     const m = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
     return `${y}-${m}-${day}`;
+  }
+
+  function formatCompactDate(isoDateStr, isToday) {
+    const [y, m, d] = isoDateStr.split('-').map(Number);
+    const dateObj = new Date(y, m - 1, d);
+    const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    const dayName = days[dateObj.getDay()];
+    const monthName = months[dateObj.getMonth()];
+
+    if (isToday) {
+      return `Hoy, ${d} ${monthName}`;
+    }
+    return `${dayName}, ${d} ${monthName}`;
   }
 }
 

@@ -29,11 +29,12 @@
     </div>
   </div>
 
+  <!-- CABECERA DE LA APP -->
   <header class="app-header">
     <div class="container header-container">
       <div class="brand">
         <div class="brand-icon">🌊</div>
-        <div>
+        <div class="brand-info">
           <h1 class="brand-title">MiMarea Gijón</h1>
           <p class="brand-subtitle">Puerto de El Musel (Asturias) &bull; 43° 33' N, 5° 41' W</p>
         </div>
@@ -51,17 +52,21 @@
     <!-- BARRA DE NAVEGACIÓN DE FECHA Y AJUSTES -->
     <section class="controls-card">
       <div class="date-navigator">
-        <button id="btnPrevDay" class="btn btn-icon" title="Día anterior">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+        <button id="btnPrevDay" class="btn btn-icon date-nav-btn" aria-label="Día anterior" title="Día anterior">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
         </button>
 
         <div class="date-picker-wrap">
           <input type="date" id="dateInput" class="input-date">
-          <button id="btnToday" class="btn btn-sm btn-outline">Hoy</button>
+          <button id="btnDateDisplay" class="date-pill-btn" title="Cambiar fecha">
+            <span class="date-calendar-icon">📅</span>
+            <span id="dateDisplayCompact">Hoy, --</span>
+          </button>
+          <button id="btnToday" class="btn btn-sm btn-outline btn-today">Hoy</button>
         </div>
 
-        <button id="btnNextDay" class="btn btn-icon" title="Día siguiente">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        <button id="btnNextDay" class="btn btn-icon date-nav-btn" aria-label="Día siguiente" title="Día siguiente">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
         </button>
       </div>
 
@@ -86,43 +91,115 @@
       </div>
     </section>
 
-    <!-- ESTADO EN TIEMPO REAL -->
-    <section id="realtimeCard" class="realtime-banner">
-      <div class="realtime-status-grid">
-        <div class="rt-item rt-height">
-          <div class="rt-label">NIVEL ACTUAL</div>
-          <div class="rt-val-group">
-            <span id="rtHeight" class="rt-value">-- m</span>
-            <span id="rtTrendPill" class="trend-badge trend-up">
-              <span id="rtTrendIcon">⬆</span> <span id="rtTrendText">Subiendo</span>
-            </span>
+    <!-- VISTA DIARIA -->
+    <div id="dayViewContainer">
+      <!-- HERO WIDGET ESTILO TUMAREA: Medidor directo de nivel, barquito flotante y flecha -->
+      <section id="tumareaHeroCard" class="card tumarea-hero-card">
+        <div class="tumarea-status-heading">
+          <span class="tumarea-lead">La marea está</span>
+          <span id="tmTrendWord" class="tumarea-trend-badge trend-up">SUBIENDO</span>
+          <span class="tumarea-since">desde las <strong id="tmSinceTime">--:--</strong></span>
+        </div>
+
+        <div class="tumarea-gauge-row">
+          <!-- Flecha gigante direccional verde / roja -->
+          <div id="tmArrow" class="tumarea-big-arrow arrow-up" title="Marea subiendo">
+            <svg viewBox="0 0 24 24" class="arrow-svg"><path d="M12 4l-8 8h5v8h6v-8h5z"/></svg>
+          </div>
+
+          <!-- Vaso graduado con nivel animado y barquito que flota sobre el agua -->
+          <div class="tumarea-glass" id="tmGlass">
+            <div class="tumarea-water" id="tmWater" style="height: 50%;">
+              <div class="tumarea-boat" id="tmBoat" title="Nivel del mar">
+                <svg viewBox="0 0 32 32" class="boat-svg">
+                  <!-- Casco del barco -->
+                  <path d="M4 22 L28 22 L24 28 L8 28 Z" fill="#f8fafc" stroke="#1e293b" stroke-width="1.2"/>
+                  <!-- Mástil -->
+                  <line x1="16" y1="5" x2="16" y2="22" stroke="#475569" stroke-width="2"/>
+                  <!-- Vela mayor -->
+                  <polygon points="16,6 16,19 26,19" fill="#38bdf8"/>
+                  <!-- Foque / Vela proa -->
+                  <polygon points="15,8 15,19 7,19" fill="#93c5fd"/>
+                </svg>
+              </div>
+            </div>
+            <div class="tumarea-glass-reflection"></div>
+          </div>
+
+          <!-- Las tres cotas de nivel en vertical: Pleamar, Actual en vivo y Bajamar -->
+          <div class="tumarea-levels">
+            <div class="level-item level-max">
+              <span class="level-tag">Pleamar</span>
+              <strong id="tmLevelMax">-- m</strong>
+            </div>
+            <div class="level-item level-current">
+              <span class="level-tag">Nivel actual</span>
+              <strong id="tmLevelCurrent" class="pulse-level">-- m</strong>
+            </div>
+            <div class="level-item level-min">
+              <span class="level-tag">Bajamar</span>
+              <strong id="tmLevelMin">-- m</strong>
+            </div>
           </div>
         </div>
 
-        <div class="rt-item rt-next">
-          <div class="rt-label">PRÓXIMO CAMBIO</div>
-          <div id="rtNextTitle" class="rt-value-sm">--</div>
-          <div id="rtCountdown" class="rt-sub">en --</div>
+        <!-- Anuncio de la próxima marea -->
+        <div class="tumarea-next-banner">
+          <div class="tumarea-next-main">
+            La <strong id="tmNextName">Pleamar</strong> será a las <strong id="tmNextTime" class="text-accent">--:--</strong> (<span id="tmNextHeight">-- m</span>)
+          </div>
+          <div class="tumarea-next-sub">
+            <span id="tmCountdown">Faltan --</span> &bull; 
+            <span id="tmRate10m">En 10 min el nivel cambiará --</span>
+          </div>
         </div>
+      </section>
 
-        <div class="rt-item rt-coeff">
-          <div class="rt-label">COEFICIENTE</div>
-          <div id="rtCoeffVal" class="rt-value-sm">--</div>
-          <div id="rtCoeffDesc" class="rt-sub">--</div>
+      <!-- CUADRÍCULA DIRECTA DE LAS 4 MAREAS DEL DÍA -->
+      <section class="tumarea-tides-section" id="tidesCardsSection">
+        <div class="section-title-row">
+          <h3 class="section-title">Mareas del Día &bull; El Musel</h3>
+          <span class="text-xs text-muted" id="tidesCardsDateLabel">Horario oficial</span>
         </div>
-
-        <div class="rt-item rt-temp">
-          <div class="rt-label">TEMP. AGUA EL MUSEL</div>
-          <div id="rtWaterTemp" class="rt-value-sm">-- °C</div>
-          <div class="rt-sub">Promedio Cantábrico</div>
+        <div class="tumarea-events-grid" id="eventsCardsContainer">
+          <!-- Generado dinámicamente con JavaScript -->
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- VISTA DIARIA -->
-    <div id="dayViewContainer">
-      <!-- GRÁFICO DE LA CURVA DE MAREA DE 24 HORAS -->
-      <section class="card chart-section">
+      <!-- BARRA RÁPIDA DE ASTRONOMÍA ESTILO TUMAREA (Sol, Luna y Coeficiente) -->
+      <section class="tumarea-astro-strip" id="quickAstroStrip">
+        <div class="astro-strip-item">
+          <span class="astro-strip-icon">🌅</span>
+          <div class="astro-strip-meta">
+            <span class="astro-strip-label">Amanecer</span>
+            <strong id="quickSunrise" class="astro-strip-val">--:--</strong>
+          </div>
+        </div>
+        <div class="astro-strip-item">
+          <span id="quickMoonIcon" class="astro-strip-icon">🌓</span>
+          <div class="astro-strip-meta">
+            <span class="astro-strip-label" id="quickMoonPhase">Luna</span>
+            <strong id="quickMoonPercent" class="astro-strip-val">--%</strong>
+          </div>
+        </div>
+        <div class="astro-strip-item">
+          <span class="astro-strip-icon">🌇</span>
+          <div class="astro-strip-meta">
+            <span class="astro-strip-label">Puesta</span>
+            <strong id="quickSunset" class="astro-strip-val">--:--</strong>
+          </div>
+        </div>
+        <div class="astro-strip-item">
+          <span class="astro-strip-icon">🌊</span>
+          <div class="astro-strip-meta">
+            <span class="astro-strip-label">Coeficiente</span>
+            <strong id="quickCoeff" class="astro-strip-val">--</strong>
+          </div>
+        </div>
+      </section>
+
+      <!-- GRÁFICO DE LA CURVA DE MAREA DE 24 HORAS (CON SOPORTE TÁCTIL) -->
+      <section class="card chart-section" id="chartSection">
         <div class="card-header">
           <h3>Curva de Marea de 24 Horas</h3>
           <span class="text-muted text-sm" id="chartDatumLabel">Ref: Cero del Puerto</span>
@@ -140,13 +217,8 @@
         </div>
       </section>
 
-      <!-- TABLA RESUMEN DE PLEAMARES Y BAJAMARES -->
-      <section class="events-grid" id="eventsCardsContainer">
-        <!-- Generado dinámicamente -->
-      </section>
-
-      <!-- PANELES DE ASTRONOMÍA: SOL, LUNA Y ACTIVIDAD SOLUNAR -->
-      <div class="astro-grid">
+      <!-- PANELES DETALLADOS DE ASTRONOMÍA: SOL, LUNA Y ACTIVIDAD SOLUNAR -->
+      <div class="astro-grid" id="astroSection">
         <!-- SOL Y LUZ DIURNA -->
         <div class="card astro-card">
           <div class="card-header">
@@ -226,7 +298,7 @@
       </div>
     </div>
 
-    <!-- VISTA MENSUAL (CALENDARIO) -->
+    <!-- VISTA MENSUAL (TABLA DE 30 DÍAS / CALENDARIO) -->
     <div id="monthViewContainer" class="hidden">
       <section class="card">
         <div class="card-header month-header">
@@ -255,10 +327,30 @@
     </div>
   </main>
 
+  <!-- BARRA DE NAVEGACIÓN INFERIOR PARA MÓVIL (PWA / iOS TAB BAR) -->
+  <nav class="mobile-tab-bar" id="mobileTabBar">
+    <button class="mobile-tab-btn active" data-tab="marea">
+      <span class="tab-icon">🌊</span>
+      <span class="tab-title">Tu Marea</span>
+    </button>
+    <button class="mobile-tab-btn" data-tab="chart">
+      <span class="tab-icon">📈</span>
+      <span class="tab-title">Gráfica</span>
+    </button>
+    <button class="mobile-tab-btn" data-tab="astro">
+      <span class="tab-icon">☀️</span>
+      <span class="tab-title">Sol & Luna</span>
+    </button>
+    <button class="mobile-tab-btn" data-tab="month">
+      <span class="tab-icon">📅</span>
+      <span class="tab-title">30 Días</span>
+    </button>
+  </nav>
+
   <footer class="app-footer">
     <div class="container footer-content">
       <p>
-        <strong>MiMarea Gijón</strong> &bull; Predicción perpetua ejecutada localmente en <strong>WebAssembly</strong> para el <strong>Puerto de El Musel (Gijón)</strong>.
+        <strong>MiMarea Gijón</strong> &bull; Predicción perpetua en <strong>WebAssembly</strong> para el <strong>Puerto de El Musel</strong>.
       </p>
       <p class="text-xs text-muted">
         Alojado en Cloudflare Pages / cdmon &bull; 100% Autónomo sin servidor &bull; Funciona sin conexión
