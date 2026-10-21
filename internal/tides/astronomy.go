@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"time"
+	_ "time/tzdata"
 )
 
 // Constantes de ubicación de Gijón (Puerto del Musel)
@@ -15,10 +16,32 @@ const (
 
 var gijonLocation *time.Location
 
+// GetSpanishOffsetForTime devuelve la zona horaria ("CET" o "CEST") y el offset en segundos (+3600 o +7200)
+// según la normativa europea oficial española (Directiva 2000/84/CE).
+func GetSpanishOffsetForTime(t time.Time) (string, int) {
+	utc := t.UTC()
+	y := utc.Year()
+
+	// Último domingo de marzo a las 01:00 UTC (02:00 CET -> 03:00 CEST)
+	march31 := time.Date(y, time.March, 31, 1, 0, 0, 0, time.UTC)
+	lastSundayMarch := march31.AddDate(0, 0, -int(march31.Weekday()))
+
+	// Último domingo de octubre a las 01:00 UTC (03:00 CEST -> 02:00 CET)
+	oct31 := time.Date(y, time.October, 31, 1, 0, 0, 0, time.UTC)
+	lastSundayOct := oct31.AddDate(0, 0, -int(oct31.Weekday()))
+
+	if utc.After(lastSundayMarch) && utc.Before(lastSundayOct) {
+		return "CEST", 7200 // Horario de verano (UTC+2)
+	}
+	return "CET", 3600 // Horario de invierno (UTC+1)
+}
+
 func init() {
 	loc, err := time.LoadLocation(GijonTZName)
 	if err != nil {
-		loc = time.FixedZone("CET", 1*3600)
+		// Fallback dinámico si no existiera tzdata
+		name, off := GetSpanishOffsetForTime(time.Now())
+		loc = time.FixedZone(name, off)
 	}
 	gijonLocation = loc
 }

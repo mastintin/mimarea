@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"syscall/js"
 	"time"
+	_ "time/tzdata"
 
 	"mimarea/internal/tides"
 )

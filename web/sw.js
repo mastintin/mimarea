@@ -1,5 +1,5 @@
-// MiMarea Gijón — Service Worker v2 (Estrategia Network-First con soporte Offline total)
-const CACHE_NAME = 'mimarea-v3';
+// MiMarea Gijón — Service Worker v4 (Estrategia Network-First con soporte Offline total)
+const CACHE_NAME = 'mimarea-v4';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',

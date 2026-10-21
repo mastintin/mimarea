@@ -13,7 +13,7 @@
   <meta name="apple-mobile-web-app-title" content="MiMarea">
   <meta name="theme-color" content="#0b1320">
 
-  <link rel="stylesheet" href="css/style.css?v=3">
+  <link rel="stylesheet" href="css/style.css?v=4">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌊</text></svg>">
 </head>
 <body>
@@ -72,7 +72,10 @@
 
       <div class="date-display-info">
         <h2 id="dateDisplayTitle">Cargando fecha...</h2>
-        <span id="coeffBadge" class="coeff-pill">Coef. --</span>
+        <div class="meta-pills-row">
+          <span id="coeffBadge" class="coeff-pill">Coef. --</span>
+          <span id="tzBadge" class="tz-pill">Hora oficial España</span>
+        </div>
       </div>
 
       <div class="view-toggles">
@@ -358,7 +361,7 @@
   </footer>
 
   <!-- Carga del runtime oficial de Go WebAssembly y script de la aplicación -->
-  <script src="js/wasm_exec.js?v=3"></script>
-  <script src="js/app.js?v=3"></script>
+  <script src="js/wasm_exec.js?v=4"></script>
+  <script src="js/app.js?v=4"></script>
 </body>
 </html>

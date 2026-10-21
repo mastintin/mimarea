@@ -172,6 +172,10 @@ type TideDayResult struct {
 	Source        string           `json:"source"`          // "IHM / TuMarea Oficial" o "Cálculo Armónico Perpetuo"
 	Datum         DatumType        `json:"datum"`           // "port" o "msl"
 	DatumName     string           `json:"datum_name"`      // "Cero del Puerto (LAT)" o "Nivel Medio del Mar"
+	TimeZone      string           `json:"timezone"`        // "CEST (UTC+2)" o "CET (UTC+1)"
+	ZoneName      string           `json:"zone_name"`       // "CEST" o "CET"
+	UTCOffsetHrs  int              `json:"utc_offset_hours"` // 2 o 1
+	IsDST         bool             `json:"is_dst"`          // true si es horario de verano
 	Coefficient   int              `json:"coefficient"`     // Coeficiente de marea del día (20 - 120)
 	CoeffLevel    string           `json:"coeff_level"`     // "Marea Viva", "Marea Media", "Marea Muerta"
 	Events        []TideEvent      `json:"events"`          // Pleamares y bajamares del día
@@ -207,7 +211,12 @@ func CalculateDayTides(date time.Time, datum DatumType) TideDayResult {
 	loc := GetGijonLocation()
 	year, month, day := date.Date()
 	dayStart := time.Date(year, month, day, 0, 0, 0, 0, loc)
-	dayEnd := dayStart.Add(24 * time.Hour)
+	dayEnd := time.Date(year, month, day, 23, 59, 59, 999999999, loc)
+
+	zoneName, offsetSec := dayStart.Zone()
+	offsetHrs := offsetSec / 3600
+	isDST := (offsetHrs == 2)
+	tzStr := fmt.Sprintf("%s (UTC+%d)", zoneName, offsetHrs)
 
 	// Curva para visualización web cada 10 minutos (145 puntos)
 	curve := make([]TideCurvePoint, 0, 145)
@@ -322,6 +331,10 @@ func CalculateDayTides(date time.Time, datum DatumType) TideDayResult {
 		Source:        source,
 		Datum:         datum,
 		DatumName:     datumName,
+		TimeZone:      tzStr,
+		ZoneName:      zoneName,
+		UTCOffsetHrs:  offsetHrs,
+		IsDST:         isDST,
 		Coefficient:   coeff,
 		CoeffLevel:    coeffLevel,
 		Events:        events,
@@ -467,6 +480,8 @@ type DaySummary struct {
 	DateStr     string      `json:"date"`
 	Day         int         `json:"day"`
 	Weekday     string      `json:"weekday"`
+	ZoneName    string      `json:"zone_name"` // "CEST" o "CET"
+	IsDST       bool        `json:"is_dst"`    // true si es horario de verano
 	Coefficient int         `json:"coefficient"`
 	CoeffLevel  string      `json:"coeff_level"`
 	MoonPhase   string      `json:"moon_phase"`
@@ -543,6 +558,8 @@ func CalculateNext30DaysTides(startDate time.Time, datum DatumType) Next30DaysRe
 			DateStr:     dayRes.DateStr,
 			Day:         curDate.Day(),
 			Weekday:     daysSpanish[curDate.Weekday()],
+			ZoneName:    dayRes.ZoneName,
+			IsDST:       dayRes.IsDST,
 			Coefficient: dayRes.Coefficient,
 			CoeffLevel:  dayRes.CoeffLevel,
 			MoonPhase:   dayRes.MoonPhase.PhaseName,

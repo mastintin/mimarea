@@ -316,6 +316,13 @@ function startApplication() {
     chartDatumLabel.textContent = `Ref: ${data.datum_name}`;
     tidesCardsDateLabel.textContent = isToday ? 'Predicción oficial para hoy' : data.date_formatted;
 
+    const tzBadge = document.getElementById('tzBadge');
+    if (tzBadge && data.timezone) {
+      const isSummer = data.is_dst;
+      tzBadge.textContent = isSummer ? `☀️ ${data.timezone} (Verano)` : `❄️ ${data.timezone} (Invierno)`;
+      tzBadge.className = `tz-pill ${isSummer ? 'tz-summer' : 'tz-winter'}`;
+    }
+
     // 2. Renderizar Widget Hero TuMarea
     renderTuMareaHero(data, isToday);
 
@@ -721,16 +728,21 @@ function startApplication() {
 
     const todayStr = getTodayDateString();
     const monthsShort = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    let prevDST = null;
 
-    data.days.forEach(day => {
+    data.days.forEach((day, idx) => {
       const tr = document.createElement('tr');
       const isToday = (day.date === todayStr);
       const isSelected = (day.date === state.currentDate);
+      const isDSTChange = (prevDST !== null && prevDST !== day.is_dst);
+      prevDST = day.is_dst;
+
       tr.className = `row-30day ${isToday ? 'row-today' : ''} ${isSelected && !isToday ? 'row-selected' : ''}`;
 
       const [y, m, d] = day.date.split('-').map(Number);
       const monthStr = monthsShort[m - 1];
       const moonIcon = getMoonEmoji(day.moon_icon);
+      const tzLabel = day.zone_name || (day.is_dst ? 'CEST' : 'CET');
 
       // Una marea por línea
       let tidesHtml = '';
@@ -749,6 +761,8 @@ function startApplication() {
         tidesHtml = '<span class="text-muted text-xs">Sin eventos calculados</span>';
       }
 
+      const dstChangeBadge = isDSTChange ? `<span class="dst-alert-tag" title="Cambio de hora oficial en España">⏰ CAMBIO HORA</span>` : '';
+
       tr.innerHTML = `
         <td class="col-day">
           <div class="day-badge">
@@ -756,6 +770,7 @@ function startApplication() {
             <span class="day-num">${day.day}</span>
             <span class="day-month">${monthStr}</span>
           </div>
+          ${dstChangeBadge}
         </td>
         <td class="col-tides">
           <div class="day-tides-stack">
@@ -766,6 +781,7 @@ function startApplication() {
           <div class="meta-stack">
             <span class="coeff-badge-mini" title="${day.coeff_level}">Coef ${day.coefficient}</span>
             <span class="moon-mini" title="${day.moon_phase}">${moonIcon} ${day.moon_percent}%</span>
+            <span class="text-xs text-muted" title="Zona horaria">${tzLabel}</span>
           </div>
         </td>
       `;

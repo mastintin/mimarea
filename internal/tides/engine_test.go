@@ -5,6 +5,19 @@ import (
 	"time"
 )
 
+func TestTimezoneMadrid(t *testing.T) {
+	loc := GetGijonLocation()
+	tSummer := time.Date(2026, 7, 15, 12, 0, 0, 0, loc)
+	tWinter := time.Date(2026, 1, 15, 12, 0, 0, 0, loc)
+	nameS, offsetS := tSummer.Zone()
+	nameW, offsetW := tWinter.Zone()
+	t.Logf("Verano: %s offset=%d (esperado CEST, 7200)", nameS, offsetS)
+	t.Logf("Invierno: %s offset=%d (esperado CET, 3600)", nameW, offsetW)
+	if offsetS != 7200 || offsetW != 3600 {
+		t.Errorf("Error en offset de zona horaria española: verano=%d, invierno=%d", offsetS, offsetW)
+	}
+}
+
 func TestNov1(t *testing.T) {
 	loc := GetGijonLocation()
 	for _, yr := range []int{2024, 2025, 2026} {
